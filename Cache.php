@@ -43,7 +43,7 @@ class Cache
         }
 
         // Initialize cache hits and misses file
-        $this->statsFile = $cacheDir . '/cache_stats.json';
+        $this->statsFile = $cacheDir . "/cache_stats.json";
         if (!file_exists($this->statsFile)) {
             $this->resetCacheStats();
         }
@@ -80,16 +80,16 @@ class Cache
         }
 
         $cachedData = unserialize($decryptedData);
-        if (!$cachedData || !isset($cachedData['expiry'], $cachedData['data'])) {
+        if (!$cachedData || !isset($cachedData["expiry"], $cachedData["data"])) {
             // Invalid cache data
             // Handle the error, e.g., log an error message and return false
             return false;
         }
 
         // Check if cache has expired
-        if ($cachedData['expiry'] === 0 || time() < $cachedData['expiry']) {
+        if ($cachedData["expiry"] === 0 || time() < $cachedData["expiry"]) {
             $this->incrementCacheHits(); // Increment cache hits counter
-            return $cachedData['data'];
+            return $cachedData["data"];
         } else {
             // Remove cache file if expired
             unlink($file);
@@ -115,8 +115,8 @@ class Cache
 
         $file = $this->getCacheFileName($key);
         $cachedData = [
-            'expiry' => $expiry > 0 ? time() + $expiry : 0,
-            'data' => $data,
+            "expiry" => $expiry > 0 ? time() + $expiry : 0,
+            "data" => $data,
         ];
 
         $encryptedData = $this->customEncrypt(serialize($cachedData));
@@ -136,7 +136,7 @@ class Cache
     {
         if ($key === null) {
             // Clear entire cache directory
-            array_map('unlink', glob($this->cacheDir . '/*.cache'));
+            array_map("unlink", glob($this->cacheDir . "/*.cache"));
         } else {
             // Clear cache for specific key
             $file = $this->getCacheFileName($key);
@@ -155,7 +155,7 @@ class Cache
      */
     private function getCacheFileName($key)
     {
-        return $this->cacheDir . '/' . md5($key) . '.cache';
+        return $this->cacheDir . "/" . md5($key) . ".cache";
     }
 
     /**
@@ -192,7 +192,7 @@ class Cache
     private function incrementCacheHits()
     {
         $stats = $this->getCacheStats();
-        $stats['hits']++;
+        $stats["hits"]++;
         $this->updateCacheStats($stats);
     }
 
@@ -202,7 +202,7 @@ class Cache
     private function incrementCacheMisses()
     {
         $stats = $this->getCacheStats();
-        $stats['misses']++;
+        $stats["misses"]++;
         $this->updateCacheStats($stats);
     }
 
@@ -236,7 +236,7 @@ class Cache
      */
     private function resetCacheStats()
     {
-        $stats = ['hits' => 0, 'misses' => 0];
+        $stats = ["hits" => 0, "misses" => 0];
         file_put_contents($this->statsFile, json_encode($stats));
         $this->updateCacheStats($stats);
     }
@@ -248,7 +248,7 @@ class Cache
      */
     public function getCacheSize()
     {
-        $cacheFiles = glob($this->cacheDir . '/*.cache');
+        $cacheFiles = glob($this->cacheDir . "/*.cache");
         $totalSize = 0;
         foreach ($cacheFiles as $file) {
             $totalSize += filesize($file);
