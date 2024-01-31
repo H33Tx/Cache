@@ -55,6 +55,21 @@ $cache->clearCache("key");
 $cache->clearCache();
 ```
 
+### 5. Retrieving Cache Hits and Misses
+
+```php
+// Get cache hits and misses
+echo "Cache Hits: " . $cache->getCacheHits() . PHP_EOL;
+echo "Cache Misses: " . $cache->getCacheMisses() . PHP_EOL;
+```
+
+### 6. Retrieving Cache Size
+
+```php
+// Get cache size
+echo "Cache Size: " . $cache->getCacheSize() . " bytes" . PHP_EOL;
+```
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
