@@ -1,4 +1,4 @@
-# Cash - PHP File-Based Cache
+# Cache - PHP File-Based Cache
 
 This is a simple PHP file-based caching system with support for cache monitoring and encryption. It allows you to securely cache data and monitor cache usage in your PHP applications.
 
