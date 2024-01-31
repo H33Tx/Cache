@@ -55,11 +55,24 @@ class Cache
             return false;
         }
 
-        $cachedData = unserialize(openssl_decrypt(file_get_contents($file), 'AES-256-CBC', $this->encryptionKey, 0, $this->getInitializationVector()));
+        $encryptedData = file_get_contents($file);
+        if ($encryptedData === false) {
+            // Error reading cache file
+            // Handle the error, e.g., log an error message and return false
+            return false;
+        }
+
+        $decryptedData = $this->customDecrypt($encryptedData);
+        if ($decryptedData === false) {
+            // Error decrypting data
+            // Handle the error, e.g., log an error message and return false
+            return false;
+        }
+
+        $cachedData = unserialize($decryptedData);
         if (!$cachedData || !isset($cachedData['expiry'], $cachedData['data'])) {
-            // Invalid cache file, remove it
-            unlink($file);
-            $this->incrementCacheMisses(); // Increment cache misses counter
+            // Invalid cache data
+            // Handle the error, e.g., log an error message and return false
             return false;
         }
 
@@ -96,7 +109,7 @@ class Cache
             'data' => $data,
         ];
 
-        $encryptedData = openssl_encrypt(serialize($cachedData), 'AES-256-CBC', $this->encryptionKey, 0, $this->getInitializationVector());
+        $encryptedData = $this->customEncrypt(serialize($cachedData));
         if ($encryptedData === false || file_put_contents($file, $encryptedData) === false) {
             throw new Exception("Failed to write cache file: $file");
         }
@@ -136,13 +149,31 @@ class Cache
     }
 
     /**
-     * Generates an initialization vector (IV) for encryption.
+     * Custom encryption method.
      *
-     * @return string The initialization vector.
+     * @param string $data The data to encrypt.
+     *
+     * @return string|false The encrypted data, or false on failure.
      */
-    private function getInitializationVector()
+    private function customEncrypt($data)
     {
-        return openssl_random_pseudo_bytes(openssl_cipher_iv_length('AES-256-CBC'));
+        // Your custom encryption logic here
+        // For example, you can use base64 encoding for simplicity
+        return base64_encode($data);
+    }
+
+    /**
+     * Custom decryption method.
+     *
+     * @param string $data The data to decrypt.
+     *
+     * @return string|false The decrypted data, or false on failure.
+     */
+    private function customDecrypt($data)
+    {
+        // Your custom decryption logic here
+        // For example, you can use base64 decoding for simplicity
+        return base64_decode($data);
     }
 
     /**
