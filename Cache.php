@@ -22,21 +22,31 @@ class Cache
     /** @var int Number of cache misses. */
     private $cacheMisses = 0;
 
+    /** @var string The path to the file storing cache hits and misses. */
+    private $statsFile;
+
     /**
      * Cache constructor.
      *
      * @param string $cacheDir The directory where cache files will be stored.
      * @param string $encryptionKey The encryption key.
-     *
-     * @throws Exception If the cache directory cannot be created.
      */
     public function __construct($cacheDir, $encryptionKey)
     {
-        if (!is_dir($cacheDir) && !mkdir($cacheDir, 0777, true)) {
-            throw new Exception("Failed to create cache directory: $cacheDir");
-        }
+        // Initialize cache directory and encryption key
         $this->cacheDir = $cacheDir;
         $this->encryptionKey = $encryptionKey;
+
+        // Create cache directory if it doesn't exist
+        if ((!is_dir($this->cacheDir) || !file_exists($this->cacheDir)) && !mkdir($this->cacheDir, 0775, true)) {
+            throw new Exception("Failed to create cache directory: {$this->cacheDir}");
+        }
+
+        // Initialize cache hits and misses file
+        $this->statsFile = $cacheDir . '/cache_stats.json';
+        if (!file_exists($this->statsFile)) {
+            $this->resetCacheStats();
+        }
     }
 
     /**
@@ -177,43 +187,58 @@ class Cache
     }
 
     /**
-     * Increment the cache hits counter.
-     *
-     * @return void
+     * Increments the cache hits counter and updates the stats file.
      */
     private function incrementCacheHits()
     {
-        $this->cacheHits++;
+        $stats = $this->getCacheStats();
+        $stats['hits']++;
+        $this->updateCacheStats($stats);
     }
 
     /**
-     * Increment the cache misses counter.
-     *
-     * @return void
+     * Increments the cache misses counter and updates the stats file.
      */
     private function incrementCacheMisses()
     {
-        $this->cacheMisses++;
+        $stats = $this->getCacheStats();
+        $stats['misses']++;
+        $this->updateCacheStats($stats);
     }
 
     /**
-     * Get the number of cache hits.
+     * Gets the cache statistics (hits and misses) from the stats file.
      *
-     * @return int The number of cache hits.
+     * @return array The cache statistics.
      */
-    public function getCacheHits()
+    public function getCacheStats($stats = "both")
     {
-        return $this->cacheHits;
+        $statsData = json_decode(file_get_contents($this->statsFile), true);
+        if ($stats !== "both") {
+            $statsData = $statsData[$stats];
+        }
+        return $statsData;
     }
 
     /**
-     * Get the number of cache misses.
+     * Updates the cache statistics in the stats file.
      *
-     * @return int The number of cache misses.
+     * @param array $stats The cache statistics to update.
      */
-    public function getCacheMisses()
+    private function updateCacheStats($stats)
     {
-        return $this->cacheMisses;
+        $statsData = json_encode($stats);
+        file_put_contents($this->statsFile, $statsData);
+    }
+
+    /**
+     * Resets the cache statistics to zero.
+     */
+    private function resetCacheStats()
+    {
+        $stats = ['hits' => 0, 'misses' => 0];
+        file_put_contents($this->statsFile, json_encode($stats));
+        $this->updateCacheStats($stats);
     }
 
     /**
