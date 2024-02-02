@@ -47,6 +47,19 @@ class Cache
         if (!file_exists($this->statsFile)) {
             $this->resetCacheStats();
         }
+
+        // Start session if not already started
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        // Initialize cache hits and misses if not set in session
+        if (!isset($_SESSION['cache_hits'])) {
+            $_SESSION['cache_hits'] = 0;
+        }
+        if (!isset($_SESSION['cache_misses'])) {
+            $_SESSION['cache_misses'] = 0;
+        }
     }
 
     /**
@@ -89,11 +102,13 @@ class Cache
         // Check if cache has expired
         if ($cachedData["expiry"] === 0 || time() < $cachedData["expiry"]) {
             $this->incrementCacheHits(); // Increment cache hits counter
+            $this->incrementLocalCacheHits(); // Increment cache hits counter
             return $cachedData["data"];
         } else {
             // Remove cache file if expired
             unlink($file);
             $this->incrementCacheMisses(); // Increment cache misses counter
+            $this->incrementLocalCacheMisses(); // Increment cache misses counter
             return false;
         }
     }
@@ -136,12 +151,26 @@ class Cache
     {
         if ($key === null) {
             // Clear entire cache directory
-            array_map("unlink", glob($this->cacheDir . "/*.cache"));
+            array_map('unlink', glob($this->cacheDir . '/*.cache'));
         } else {
-            // Clear cache for specific key
-            $file = $this->getCacheFileName($key);
-            if (file_exists($file)) {
-                unlink($file);
+            // Clear cache for specific key or pattern
+            if (strpos($key, '*') !== false) {
+                // If the key contains wildcard (*), delete cache files matching the pattern
+                $pattern = str_replace('*', '.*', preg_quote($key, '/'));
+                $files = glob($this->cacheDir . '/*.cache');
+                foreach ($files as $file) {
+                    $fileName = basename($file);
+                    $decodedFileName = $this->customDecrypt(substr($fileName, 0, -6)); // Decode and remove '.cache'
+                    if (preg_match('/' . $pattern . '/', $decodedFileName)) {
+                        unlink($file);
+                    }
+                }
+            } else {
+                // Clear cache for specific key
+                $file = $this->getCacheFileName($key);
+                if (file_exists($file)) {
+                    unlink($file);
+                }
             }
         }
     }
@@ -155,7 +184,7 @@ class Cache
      */
     private function getCacheFileName($key)
     {
-        return $this->cacheDir . "/" . md5($key) . ".cache";
+        return $this->cacheDir . "/" . $this->customEncrypt($key) . ".cache";
     }
 
     /**
@@ -197,6 +226,14 @@ class Cache
     }
 
     /**
+     * Increments the cache hits counter and updates the stats file.
+     */
+    private function incrementLocalCacheHits()
+    {
+        $_SESSION['cache_hits']++;
+    }
+
+    /**
      * Increments the cache misses counter and updates the stats file.
      */
     private function incrementCacheMisses()
@@ -204,6 +241,14 @@ class Cache
         $stats = $this->getCacheStats();
         $stats["misses"]++;
         $this->updateCacheStats($stats);
+    }
+
+    /**
+     * Increments the cache misses counter and updates the session variable.
+     */
+    private function incrementLocalCacheMisses()
+    {
+        $_SESSION['cache_misses']++;
     }
 
     /**
@@ -218,6 +263,19 @@ class Cache
             $statsData = $statsData[$stats];
         }
         return $statsData;
+    }
+
+    /**
+     * Gets the cache statistics (hits and misses) from the session variable.
+     *
+     * @return array The cache statistics.
+     */
+    public function getLocalCacheStats($stats = "both")
+    {
+        return [
+            'hits' => isset($_SESSION['cache_hits']) ? $_SESSION['cache_hits'] : 0,
+            'misses' => isset($_SESSION['cache_misses']) ? $_SESSION['cache_misses'] : 0,
+        ];
     }
 
     /**
@@ -239,6 +297,15 @@ class Cache
         $stats = ["hits" => 0, "misses" => 0];
         file_put_contents($this->statsFile, json_encode($stats));
         $this->updateCacheStats($stats);
+    }
+
+    /**
+     * Resets the cache statistics to zero.
+     */
+    public function resetLocalCacheStats()
+    {
+        $_SESSION['cache_hits'] = 0;
+        $_SESSION['cache_misses'] = 0;
     }
 
     /**
